@@ -65,33 +65,22 @@ The application uses two primary data models:
 
 ### Data Deduplication (`deduplicate.py`)
 To avoid storing duplicate CVEs, the system checks if a CVE ID already exists in the database before inserting:
-```python
-if cve.id not in existing_ids:
-    db.add(cve)
-```
+
 This process ensures that only unique CVEs are preserved.
 
 ### Data Synchronization (`fetch_cve_data.py`)
 The system periodically syncs with the NVD API to retrieve new CVE data using:
-```python
-requests.get(nvd_url).json()
-```
+
 This process can be run in the background or scheduled using tools like APScheduler.
 
 ### API Routes (`main.py`)
 All major functionalities are exposed through FastAPI routes. Example definition:
-```python
-@app.get('/cves/list')
-def list_cves(...):
-    ...
-```
+
 FastAPI automatically generates documentation at `/docs` and `/redoc`.
 
 ### Web Interface (`templates/index.html`)
 A dynamic web interface is built using Jinja2 templates. It supports filtering by CVSS score, dates, and keywords:
-```html
-<input type='range' id='cvssMin' />
-```
+
 This allows users to interactively search and analyze vulnerability data.
 
 ## 5. Testing
