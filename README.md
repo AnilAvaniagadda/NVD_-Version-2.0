@@ -1,71 +1,116 @@
-# NVD_-Version-2.0
-FastAPI CVE Dashboard – Detailed API Documentation & Test Cases 
+# FastAPI CVE Dashboard – Detailed API Documentation & Test Cases
 
-1. Introduction 
-The FastAPI CVE Dashboard is an application built with FastAPI that helps users view and analyze Common Vulnerabilities and Exposures (CVE) data. It fetches CVEs from the NVD API, stores them in a SQLite database using SQLAlchemy, and serves them via a web interface and NVD API. 
+## 1. Introduction
+The FastAPI CVE Dashboard is a powerful application built with FastAPI that allows users to view, search, and analyze Common Vulnerabilities and Exposures (CVE) data. It fetches CVEs from the National Vulnerability Database (NVD) API, stores them in a local SQLite database using SQLAlchemy, and presents the data through a REST API and an interactive web interface.
 
-2. Data Model 
-The application defines two primary models: 
-- CVE: Stores vulnerability details like ID, description, severity scores, and vectors. 
-- CPE: Represents configuration platforms related to CVEs. 
+Key features include:
+- Data Deduplication
+- Periodic Data Synchronization
+- Rich API Endpoints
+- Filterable Web Interface
 
-3. API Endpoints  
-Endpoint: /cves/list 
-Method: GET 
-Description: Returns paginated list of CVEs with sorting options. 
-Parameters: skip (int), limit (int), sort_by (published_date/last_modified_date), sort_order (asc/desc) 
-Response: JSON with 'records' and 'total' 
+## 2. Data Model
+The application uses two primary data models:
+- **CVE**: Stores vulnerability information such as ID, description, CVSS v2/v3 scores, vector strings, and timestamps.
+- **CPE**: Represents the Common Platform Enumerations associated with each CVE, helping identify the affected systems.
 
- 
-Endpoint: /cves/{cve_id}/json 
-Method: GET 
-Description: Returns full details of a single CVE in JSON format. 
-Parameters: cve_id (str) 
-Response: Full CVE with metrics and configurations 
+## 3. API Endpoints
 
- 
-Endpoint: /cve-detail/{cve_id} 
-Method: GET (UI) 
-Description: Serves a detailed HTML page for a specific CVE. 
-Parameters: cve_id (str) 
-Response: HTML page rendered via Jinja2 
+### `/cves/list`
+- **Method**: GET
+- **Description**: Returns a paginated list of CVEs with optional sorting.
+- **Parameters**:
+  - `skip` (int): Offset for pagination
+  - `limit` (int): Number of results to return
+  - `sort_by` (str): Field to sort by (`published_date`, `last_modified_date`)
+  - `sort_order` (str): Sort order (`asc`, `desc`)
+- **Response**: JSON object with `records` and `total`
 
- 
-Endpoint: /cves/year/{year} 
-Method: GET 
-Description: Returns all CVEs from a given year. 
-Parameters: year (int) 
-Response: List of CVEs 
+### `/cves/{cve_id}/json`
+- **Method**: GET
+- **Description**: Returns detailed information about a specific CVE in JSON format.
+- **Parameters**:
+  - `cve_id` (str): The unique CVE identifier
+- **Response**: Full CVE details, including metrics and associated CPEs
 
- 
-Endpoint: /cves/score 
-Method: GET 
-Description: Returns CVEs filtered by score range. 
-Parameters: min_score (float), max_score (float), skip (int), limit (int) 
-Response: Paginated CVEs matching score range 
+### `/cve-detail/{cve_id}`
+- **Method**: GET (UI)
+- **Description**: Renders a detailed HTML page for the selected CVE.
+- **Parameters**:
+  - `cve_id` (str): The CVE identifier
+- **Response**: Jinja2-rendered HTML page
 
- 
-Endpoint: /ui 
-Method: GET (UI) 
-Description: Serves the main HTML page with search, sort, pagination. 
-Parameters: None 
-Response: HTML page 
+### `/cves/year/{year}`
+- **Method**: GET
+- **Description**: Fetches all CVEs published in a given year.
+- **Parameters**:
+  - `year` (int): The year to query
+- **Response**: JSON list of CVEs
 
-4. Testing 
-4.1 Unit Test Cases 
-- Test DB connection and model creation 
-- Test API response codes for each endpoint 
-- Test pagination and sorting logic 
-- Test score-based filtering (min_score, max_score) 
-- Test CVE detail JSON and UI render correctly 
+### `/cves/score`
+- **Method**: GET
+- **Description**: Returns CVEs filtered by CVSS score range.
+- **Parameters**:
+  - `min_score` (float): Minimum score
+  - `max_score` (float): Maximum score
+  - `skip`, `limit` for pagination
+- **Response**: Paginated JSON of filtered CVEs
 
-4.2 Manual Test Scenarios 
-- Open /ui in browser and verify table loads with pagination 
-- Change results per page and verify update 
-- Click CVE ID to open detailed view 
-- Sort columns and verify order 
-- Check CPE data and CVSS vectors are present in detail page 
-- Check error handling for invalid CVE ID 
+### `/ui`
+- **Method**: GET (UI)
+- **Description**: Main HTML dashboard with search, sort, and pagination.
+- **Response**: Rendered HTML page
 
-5. Conclusion 
-The CVE Dashboard provides an easy and efficient way to track and analyze vulnerabilities using FastAPI. With both REST and web UI, users can interact and inspect details effectively. The architecture supports future extensions such as search, advanced filters, and visualizations. 
+## 4. Core Functionalities
+
+### Data Deduplication (`deduplicate.py`)
+To avoid storing duplicate CVEs, the system checks if a CVE ID already exists in the database before inserting:
+```python
+if cve.id not in existing_ids:
+    db.add(cve)
+```
+This process ensures that only unique CVEs are preserved.
+
+### Data Synchronization (`fetch_cve_data.py`)
+The system periodically syncs with the NVD API to retrieve new CVE data using:
+```python
+requests.get(nvd_url).json()
+```
+This process can be run in the background or scheduled using tools like APScheduler.
+
+### API Routes (`main.py`)
+All major functionalities are exposed through FastAPI routes. Example definition:
+```python
+@app.get('/cves/list')
+def list_cves(...):
+    ...
+```
+FastAPI automatically generates documentation at `/docs` and `/redoc`.
+
+### Web Interface (`templates/index.html`)
+A dynamic web interface is built using Jinja2 templates. It supports filtering by CVSS score, dates, and keywords:
+```html
+<input type='range' id='cvssMin' />
+```
+This allows users to interactively search and analyze vulnerability data.
+
+## 5. Testing
+
+### 5.1 Unit Test Cases
+- Validate database connection and table creation
+- Confirm correct HTTP status codes for each endpoint
+- Test pagination and sorting mechanisms
+- Validate filtering by CVSS score (min and max)
+- Ensure JSON and UI responses are properly structured
+
+### 5.2 Manual Test Scenarios
+- Open `/ui` and verify data loads with pagination
+- Adjust result count per page and validate update
+- Navigate to CVE detail by clicking on CVE ID
+- Sort table columns and check order
+- Verify presence of CPE and CVSS vector data
+- Test invalid CVE IDs and confirm proper error messages
+
+## 6. Conclusion
+The FastAPI CVE Dashboard provides a structured and scalable platform for CVE analysis. With its API-first approach and complementary web UI, users can access, filter, and visualize vulnerability data efficiently. Its modular architecture allows for future expansion such as advanced filtering, real-time alerts, and dashboard analytics.
+
