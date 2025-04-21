@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CVE Detail</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-bottom: 10px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background-color: #f4f4f4; }
+    .section { margin-bottom: 20px; }
+    .back-btn { margin-top: 20px; padding: 8px 12px; cursor: pointer; }
+    .highlight { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2 id="cveId">Loading...</h2>
+
+  <div class="section">
+    <strong>Description:</strong>
+    <p id="description">Loading...</p>
+  </div>
+
+  <div class="section">
+    <strong>CVSS V2 Metrics:</strong><br />
+    <p>
+      <strong>Severity:</strong> <span id="severity">LOW</span>
+      &nbsp;&nbsp;&nbsp;
+      <strong>Score:</strong> <span id="scoreV2" class="highlight">-</span><br />
+      <strong>Vector String:</strong> <span id="vector">-</span>
+    </p>
+
+    <table>
+      <tr>
+        <th>Access Vector</th>
+        <th>Access Complexity</th>
+        <th>Authentication</th>
+        <th>Confidentiality Impact</th>
+        <th>Integrity Impact</th>
+        <th>Availability Impact</th>
+      </tr>
+      <tr>
+        <td id="av">-</td>
+        <td id="ac">-</td>
+        <td id="auth">-</td>
+        <td id="conf">-</td>
+        <td id="integ">-</td>
+        <td id="avail">-</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <strong>Scores:</strong><br />
+    <strong>Exploitability Score:</strong> <span id="exploit">-</span><br />
+    <strong>Impact Score:</strong> <span id="impact">-</span>
+  </div>
+
+  <div class="section">
+    <strong>CPE:</strong>
+    <table id="cpeTable">
+      <tr>
+        <th>Criteria</th>
+        <th>Match Criteria ID</th>
+        <th>Vulnerable</th>
+      </tr>
+      {% for cpe in cpes %}
+      <tr>
+        <td>{{ cpe.criteria }}</td>
+        <td>{{ cpe.match_criteria_id or "-" }}</td>
+        <td>{{ "Yes" if cpe.vulnerable else "No" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <button class="back-btn" onclick="window.location.href='/ui'">⬅ Back to List</button>
+
+  <script>
+    const cveId = window.location.pathname.split("/").pop();
+
+    fetch(`/cves/${cveId}/json`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data || !data.id) {
+          document.body.innerHTML = "<h2>❌ CVE Not Found</h2>";
+          return;
+        }
+
+        document.getElementById("cveId").innerText = data.id;
+        document.getElementById("description").innerText = data.description || "N/A";
+        document.getElementById("scoreV2").innerText = data.cvss_v2_score ?? "-";
+        
+       
+        const metrics = data.metrics?.cvssMetricV2?.[0];
+          if (metrics) {
+              document.getElementById("severity").innerText = metrics.baseSeverity || "LOW";
+              document.getElementById("vector").innerText = metrics.vectorString || "-";
+              document.getElementById("av").innerText = metrics.accessVector || "-";
+              document.getElementById("ac").innerText = metrics.accessComplexity || "-";
+              document.getElementById("auth").innerText = metrics.authentication || "-";
+              document.getElementById("conf").innerText = metrics.confidentialityImpact || "-";
+              document.getElementById("integ").innerText = metrics.integrityImpact || "-";
+              document.getElementById("avail").innerText = metrics.availabilityImpact || "-";
+              document.getElementById("exploit").innerText = metrics.exploitabilityScore || "-";
+              document.getElementById("impact").innerText = metrics.impactScore || "-";
+            }
+
+
+        const cpes = data.configurations?.nodes?.flatMap(node => node.cpeMatch || []) || [];
+        const table = document.getElementById("cpeTable");
+        for (const cpe of cpes) {
+          const row = `<tr>
+            <td>${cpe.criteria}</td>
+            <td>${cpe.matchCriteriaId}</td>
+            <td>${cpe.vulnerable ? "Yes" : "No"}</td>
+          </tr>`;
+          table.insertAdjacentHTML("beforeend", row);
+        }
+      });
+  </script>
+</body>
+</html>

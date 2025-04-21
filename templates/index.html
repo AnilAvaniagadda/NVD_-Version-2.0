@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CVE List</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    input, select, button { padding: 6px; margin: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; cursor: pointer; }
+    tr:hover { background-color: #f9f9f9; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>🔍 CVE LIST</h2>
+
+  <!-- Filter Controls -->
+  <div>
+    <label>Min Score:</label>
+    <input type="number" id="minScore" placeholder="e.g. 3.0" step="0.1">
+    <label>Max Score:</label>
+    <input type="number" id="maxScore" placeholder="e.g. 9.8" step="0.1">
+    <label>Start Date:</label>
+    <input type="date" id="startDate">
+    <label>End Date:</label>
+    <input type="date" id="endDate">
+    <button onclick="applyFilters()">Apply Filters</button>
+  </div>
+
+  <div>
+    <span>Total Records: <span id="totalRecords">0</span></span>
+  </div>
+
+  <div id="results"></div>
+
+  <!-- Pagination & Results Limit -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+    <div>
+      Results per page:
+      <select id="resultsPerPage" onchange="changeLimit()">
+        <option value="10" selected>10</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+
+    <div>
+      <button onclick="prevPage()">⬅️ Previous</button>
+      <span id="pageInfo">Page 1</span>
+      <button onclick="nextPage()">Next ➡️</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let limit = 10;
+    let totalRecords = 0;
+    let sortBy = "published_date";
+    let sortOrder = "asc";
+
+    function goToDetail(cveId) {
+      window.location.href = `/cve-detail/${cveId}`;
+    }
+
+    function changeLimit() {
+      limit = parseInt(document.getElementById("resultsPerPage").value);
+      currentPage = 1;
+      fetchData();
+    }
+
+    function toggleSort(column) {
+      if (sortBy === column) {
+        sortOrder = sortOrder === "asc" ? "desc" : "asc";
+      } else {
+        sortBy = column;
+        sortOrder = "asc";
+      }
+      fetchData();
+    }
+
+    function applyFilters() {
+      currentPage = 1;
+      fetchData();
+    }
+
+    async function fetchData() {
+      const skip = (currentPage - 1) * limit;
+      const minScore = document.getElementById("minScore").value;
+      const maxScore = document.getElementById("maxScore").value;
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+
+      let url = `/cves/list?skip=${skip}&limit=${limit}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+      if (minScore) url += `&min_score=${minScore}`;
+      if (maxScore) url += `&max_score=${maxScore}`;
+      if (startDate) url += `&start_date=${startDate}`;
+      if (endDate) url += `&end_date=${endDate}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      display(data.records);
+      totalRecords = data.total;
+      document.getElementById("totalRecords").innerText = totalRecords;
+      document.getElementById("pageInfo").innerText = `Page ${currentPage}`;
+    }
+
+    function nextPage() {
+      if ((currentPage * limit) < totalRecords) {
+        currentPage++;
+        fetchData();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        fetchData();
+      }
+    }
+
+    function display(cves) {
+      if (!cves || cves.length === 0) {
+        document.getElementById("results").innerHTML = "<p>No results found.</p>";
+        return;
+      }
+
+      let html = "<table><tr>" +
+        "<th onclick=\"toggleSort('id')\">CVE ID</th>" +
+        "<th>Email</th>" +
+        "<th onclick=\"toggleSort('published_date')\">Published Date</th>" +
+        "<th onclick=\"toggleSort('last_modified_date')\">Last Modified</th>" +
+        "<th>Status</th></tr>";
+
+      for (let cve of cves) {
+        html += `<tr onclick="goToDetail('${cve.id}')">
+          <td>${cve.id}</td>
+          <td>cve@mitre.org</td>
+          <td>${cve.published_date?.split("T")[0]}</td>
+          <td>${cve.last_modified_date?.split("T")[0]}</td>
+          <td>${cve.status}</td>
+        </tr>`;
+      }
+
+      html += "</table>";
+      document.getElementById("results").innerHTML = html;
+    }
+
+    window.onload = fetchData;
+  </script>
+</body>
+</html>
